@@ -24,6 +24,9 @@ hs_err_pid*
 replay_pid*
 
 .syndicate
+.idea
+.vscode
+/.idea
 logs/
 .syndicate-config-*/
 target/
