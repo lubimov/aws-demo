@@ -8,6 +8,8 @@ import com.amazonaws.services.dynamodbv2.model.PutItemResult;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.google.gson.Gson;
@@ -39,7 +41,7 @@ import java.util.UUID;
         libraries = {"lib/commons-lang3-3.14.0.jar", "lib/gson-2.10.1.jar"},
         artifactExtension = ArtifactExtension.ZIP
 )
-public class ApiHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
+public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 	private LambdaLogger logger;
 
 	private AmazonDynamoDB dynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
@@ -48,7 +50,8 @@ public class ApiHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGate
 	private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 	private final Map<String, String> responseHeaders = Map.of("Content-Type", "application/json");
 
-	public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent requestEvent, Context context) {
+	@Override
+	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
 		logger = context.getLogger();
 		logger.log("RequestEvent: " + requestEvent);
 		logger.log("Body: " + requestEvent.getBody());
@@ -58,7 +61,7 @@ public class ApiHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGate
 		return buildResponse(SC_OK, new ResponseBody(SC_OK, event));
 	}
 
-	private EventModel buildEventModelItem(APIGatewayV2HTTPEvent requestEvent){
+	private EventModel buildEventModelItem(APIGatewayProxyRequestEvent requestEvent){
 		EventRequest requestBody = gson.fromJson(requestEvent.getBody(), EventRequest.class);
 		logger.log("Parsed body: " + requestBody);
 
@@ -97,12 +100,11 @@ public class ApiHandler implements RequestHandler<APIGatewayV2HTTPEvent, APIGate
 		return body;
 	}
 
-	private APIGatewayV2HTTPResponse buildResponse(int statusCode, Object body) {
-		return APIGatewayV2HTTPResponse.builder()
-				.withStatusCode(statusCode)
-				.withHeaders(responseHeaders)
-				.withBody(gson.toJson(body))
-				.build();
+	private APIGatewayProxyResponseEvent buildResponse(int statusCode, Object body) {
+		APIGatewayProxyResponseEvent response = new APIGatewayProxyResponseEvent();
+		response.setStatusCode(statusCode);
+		response.setBody(gson.toJson(body));
+		return response;
 	}
 
 	////// DATA MODEL
