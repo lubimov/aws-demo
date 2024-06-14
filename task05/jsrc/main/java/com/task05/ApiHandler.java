@@ -51,12 +51,13 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	private final Map<String, String> responseHeaders = Map.of("Content-Type", "application/json");
 
 	@Override
-	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
-		logger = context.getLogger();
-		logger.log("RequestEvent: " + requestEvent);
-		logger.log("Body: " + requestEvent.getBody());
+	public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent request, Context context) {
 
-		EventModel event = buildEventModelItem(requestEvent);
+		logger = context.getLogger();
+		logger.log("RequestEvent: " + request);
+		logger.log("Body: " + request.getBody());
+
+		EventModel event = buildEventModelItem(request);
 		insertToDynamoDb(event);
 		return buildResponse(SC_OK, new ResponseBody(SC_OK, event));
 	}
@@ -80,7 +81,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		item.put("id", new AttributeValue(event.id));
 		item.put("principalId", new AttributeValue().withN(String.valueOf(event.principalId)));
 		item.put("createdAt", new AttributeValue(event.createdAt));
-		item.put("body", new AttributeValue().withN(String.valueOf(buildBody(event.body()))));
+		item.put("body", new AttributeValue().withM(buildBody(event.body())));
 
 		PutItemRequest putItemRequest = new PutItemRequest(DYNAMODB_TABLE_NAME, item);
 		PutItemResult putItemResult = dynamoDB.putItem(putItemRequest);
