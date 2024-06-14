@@ -2,3 +2,4 @@
 logs/
 .syndicate-config-dev/bundles
 .syndicate-config-dev/logs
+.syndicate-config-dev/syndicate.yml

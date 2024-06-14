@@ -24,11 +24,14 @@ hs_err_pid*
 replay_pid*
 
 .syndicate
+.DS_Store
 .idea
 .vscode
 /.idea
 logs/
-.syndicate-config-*/
+.syndicate-config-dev/bundles
+.syndicate-config-dev/logs
+.syndicate-config-dev/syndicate.yml
 target/
 /target/
 /target/
