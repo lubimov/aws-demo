@@ -2,7 +2,10 @@ package com.task05;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
-import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.document.Item;
+import com.amazonaws.services.dynamodbv2.document.PutItemOutcome;
+import com.amazonaws.services.dynamodbv2.document.Table;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
@@ -11,19 +14,14 @@ import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.syndicate.deployment.annotations.environment.EnvironmentVariable;
 import com.syndicate.deployment.annotations.environment.EnvironmentVariables;
 import com.syndicate.deployment.annotations.lambda.LambdaHandler;
 import com.syndicate.deployment.annotations.lambda.LambdaLayer;
-import com.syndicate.deployment.annotations.resources.Dependencies;
-import com.syndicate.deployment.annotations.resources.DependsOn;
 import com.syndicate.deployment.model.ArtifactExtension;
 import com.syndicate.deployment.model.DeploymentRuntime;
-import com.syndicate.deployment.model.ResourceType;
 import com.syndicate.deployment.model.RetentionSetting;
 
 import java.time.Instant;
@@ -52,7 +50,9 @@ import java.util.UUID;
 public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 	private LambdaLogger logger;
 
-	private AmazonDynamoDB dynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
+	private static AmazonDynamoDB client = AmazonDynamoDBClientBuilder.standard().build();
+	private static DynamoDB dynamoDB = new DynamoDB(client);
+
 	private String DYNAMODB_TABLE_NAME = "FROM_ENV";
 	private static final int SC_OK = 201;
 	private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
@@ -68,7 +68,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		logger.log("Events table name: " + DYNAMODB_TABLE_NAME);
 
 		EventModel event = buildEventModelItem(request);
-		insertToDynamoDb(event);
+		insertToDynamoDbV2(event);
 		return buildResponse(SC_OK, new ResponseBody(SC_OK, event));
 	}
 
@@ -85,7 +85,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		return event;
 	}
 
-	private PutItemResult insertToDynamoDb(EventModel event){
+	private void insertToDynamoDb(EventModel event){
 		logger.log(">> insertToDynamoDb");
 		Map<String, AttributeValue> item = new HashMap<>();
 		item.put("id", new AttributeValue(event.id));
@@ -94,10 +94,31 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		item.put("body", new AttributeValue().withM(buildBody(event.body())));
 
 		PutItemRequest putItemRequest = new PutItemRequest(DYNAMODB_TABLE_NAME, item);
-		PutItemResult putItemResult = dynamoDB.putItem(putItemRequest);
+		logger.log("PutItemRequest: " + putItemRequest);
 
+		PutItemResult putItemResult = client.putItem(putItemRequest);
 		logger.log("PutItemResult: " + putItemResult);
-		return putItemResult;
+	}
+
+	private void insertToDynamoDbV2(EventModel event){
+		logger.log(">> insertToDynamoDbV2");
+
+		Table table = dynamoDB.getTable(DYNAMODB_TABLE_NAME);
+		try {
+			Item item = new Item()
+					.withPrimaryKey("id", event.id)
+					.withNumber("principalId", event.principalId)
+					.withString("createdAt", event.createdAt)
+					.withMap("body", event.body());
+
+			logger.log("Item: " + item);
+			PutItemOutcome result = table.putItem(item);
+			logger.log("PutItemOutcome: " + result);
+		} catch (Exception e) {
+			System.err.println("Create items failed.");
+			System.err.println(e.getMessage());
+
+		}
 	}
 
 	private Map<String, AttributeValue> buildBody(Map<String, String> content){
