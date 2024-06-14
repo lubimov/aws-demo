@@ -61,7 +61,7 @@
     },
     "minimum_compression_size": 0
   },
-  "Events": {
+  "${event_table}": {
     "resource_type": "dynamodb_table",
     "hash_key_name": "id",
     "hash_key_type": "S",
@@ -71,35 +71,5 @@
     "write_capacity": 1,
     "global_indexes": [],
     "autoscaling": []
-  },
-  "api_handler_v2-role": {
-    "predefined_policies": [],
-    "principal_service": "lambda",
-    "custom_policies": [
-      "lambda-basic-execution"
-    ],
-    "resource_type": "iam_role"
-  },
-  "task5_api_v2": {
-    "resource_type": "api_gateway",
-    "deploy_stage": "api",
-    "dependencies": [],
-    "resources": {
-      "/events": {
-        "enable_cors": false,
-        "POST": {
-          "authorization_type": "NONE",
-          "integration_type": "lambda",
-          "lambda_name": "api_handler_v2",
-          "api_key_required": false,
-          "method_request_parameters": {},
-          "integration_request_body_template": {},
-          "responses": [],
-          "integration_responses": [],
-          "default_error_pattern": true
-        }
-      }
-    },
-    "minimum_compression_size": 0
   }
 }

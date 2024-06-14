@@ -2,6 +2,7 @@ package com.task05;
 
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
+import com.amazonaws.services.dynamodbv2.datamodeling.DynamoDBTable;
 import com.amazonaws.services.dynamodbv2.model.AttributeValue;
 import com.amazonaws.services.dynamodbv2.model.PutItemRequest;
 import com.amazonaws.services.dynamodbv2.model.PutItemResult;
@@ -14,8 +15,11 @@ import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.syndicate.deployment.annotations.environment.EnvironmentVariable;
+import com.syndicate.deployment.annotations.environment.EnvironmentVariables;
 import com.syndicate.deployment.annotations.lambda.LambdaHandler;
 import com.syndicate.deployment.annotations.lambda.LambdaLayer;
+import com.syndicate.deployment.annotations.resources.Dependencies;
 import com.syndicate.deployment.annotations.resources.DependsOn;
 import com.syndicate.deployment.model.ArtifactExtension;
 import com.syndicate.deployment.model.DeploymentRuntime;
@@ -27,7 +31,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-@DependsOn(name = "Events", resourceType = ResourceType.DYNAMODB_TABLE)
 @LambdaHandler(lambdaName = "api_handler",
 		roleName = "api_handler-role",
 		isPublishVersion = false,
@@ -41,11 +44,16 @@ import java.util.UUID;
         libraries = {"lib/commons-lang3-3.14.0.jar", "lib/gson-2.10.1.jar"},
         artifactExtension = ArtifactExtension.ZIP
 )
+@EnvironmentVariables(value = {
+		@EnvironmentVariable(key = "EventsTable", value = "${event_table}")
+})
+// Add alias to the syndicate_aliases.yml
+// event_table: Events
 public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 	private LambdaLogger logger;
 
 	private AmazonDynamoDB dynamoDB = AmazonDynamoDBClientBuilder.defaultClient();
-	private static final String DYNAMODB_TABLE_NAME = "Events";
+	private String DYNAMODB_TABLE_NAME = "FROM_ENV";
 	private static final int SC_OK = 201;
 	private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 	private final Map<String, String> responseHeaders = Map.of("Content-Type", "application/json");
@@ -56,6 +64,8 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 		logger = context.getLogger();
 		logger.log("RequestEvent: " + request);
 		logger.log("Body: " + request.getBody());
+		DYNAMODB_TABLE_NAME = System.getenv("EventsTable");
+		logger.log("Events table name: " + DYNAMODB_TABLE_NAME);
 
 		EventModel event = buildEventModelItem(request);
 		insertToDynamoDb(event);

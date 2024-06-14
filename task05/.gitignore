@@ -1,3 +1,4 @@
 .syndicate
 logs/
-.syndicate-config-*/
+.syndicate-config-dev/bundles
+.syndicate-config-dev/logs
