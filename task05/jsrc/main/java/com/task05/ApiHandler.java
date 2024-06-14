@@ -147,6 +147,6 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 	private record EventModel(String id, int principalId, String createdAt, Map<String, String> body) {
 	}
 
-	private record ResponseBody(int code, EventModel event) {
+	private record ResponseBody(int statusCode, EventModel event) {
 	}
 }
