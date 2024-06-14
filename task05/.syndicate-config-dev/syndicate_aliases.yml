@@ -4,4 +4,4 @@ logs_expiration: 30
 region: eu-central-1
 
 ## Resources
-event_table: Events
+target_table: Events

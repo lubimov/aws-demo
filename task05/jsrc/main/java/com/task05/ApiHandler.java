@@ -43,10 +43,10 @@ import java.util.UUID;
         artifactExtension = ArtifactExtension.ZIP
 )
 @EnvironmentVariables(value = {
-		@EnvironmentVariable(key = "EventsTable", value = "${event_table}")
+		@EnvironmentVariable(key = "EventsTable", value = "${target_table}")
 })
 // Add alias to the syndicate_aliases.yml
-// event_table: Events
+// target_table: Events
 public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
 	private LambdaLogger logger;
 
