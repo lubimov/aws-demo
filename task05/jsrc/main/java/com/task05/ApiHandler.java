@@ -25,6 +25,7 @@ import com.syndicate.deployment.model.DeploymentRuntime;
 import com.syndicate.deployment.model.RetentionSetting;
 
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -78,7 +79,7 @@ public class ApiHandler implements RequestHandler<APIGatewayProxyRequestEvent, A
 
 		String eventId = UUID.randomUUID().toString();
 		int principalId = requestBody.principalId;
-		String createdAt = Instant.now().toString();
+		String createdAt = Instant.now().truncatedTo(ChronoUnit.MILLIS).toString();
 		Map<String, String> content = requestBody.content;
 		EventModel event = new EventModel(eventId, principalId, createdAt, content);
 
