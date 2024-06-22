@@ -6,10 +6,10 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class OpenAPISDK {
-    public String getForecast()  {
+    public String getForecast(final String forecastUrlWithParameters)  {
         try {
             // init connection
-            URL url = new URL("https://api.open-meteo.com/v1/forecast?latitude=52.52&longitude=13.41&current=temperature_2m,wind_speed_10m&hourly=temperature_2m,relative_humidity_2m,wind_speed_10m");
+            URL url = new URL(forecastUrlWithParameters);
             HttpURLConnection con = (HttpURLConnection) url.openConnection();
             con.setRequestMethod("GET");
 

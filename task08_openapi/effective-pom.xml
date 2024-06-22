@@ -7,14 +7,14 @@
 <!-- ====================================================================== -->
 <!-- ====================================================================== -->
 <!--                                                                        -->
-<!-- Effective POM for project 'com.epam:task08_openapi:jar:1.0'            -->
+<!-- Effective POM for project 'com.epam:task08_openapi:jar:1.1'            -->
 <!--                                                                        -->
 <!-- ====================================================================== -->
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.epam</groupId>
   <artifactId>task08_openapi</artifactId>
-  <version>1.0</version>
+  <version>1.1</version>
   <name>task08_openapi</name>
   <properties>
     <maven.compiler.source>11</maven.compiler.source>
@@ -61,7 +61,7 @@
       </testResource>
     </testResources>
     <directory>/Users/Alexey_Lyubimov/Projects/AWSC/aws-demo/task08_openapi/target</directory>
-    <finalName>task08_openapi-1.0</finalName>
+    <finalName>task08_openapi-1.1</finalName>
     <pluginManagement>
       <plugins>
         <plugin>
