@@ -18,8 +18,11 @@ import com.syndicate.deployment.annotations.environment.EnvironmentVariable;
 import com.syndicate.deployment.annotations.environment.EnvironmentVariables;
 import com.syndicate.deployment.annotations.lambda.LambdaHandler;
 import com.syndicate.deployment.annotations.lambda.LambdaLayer;
+import com.syndicate.deployment.annotations.lambda.LambdaUrlConfig;
 import com.syndicate.deployment.annotations.resources.DependsOn;
 import com.syndicate.deployment.model.*;
+import com.syndicate.deployment.model.lambda.url.AuthType;
+import com.syndicate.deployment.model.lambda.url.InvokeMode;
 
 import java.util.UUID;
 
@@ -36,6 +39,10 @@ import java.util.UUID;
         runtime = DeploymentRuntime.JAVA17,
         libraries = {"lib/commons-lang3-3.14.0.jar", "lib/gson-2.10.1.jar", "lib/task08_openapi-1.1.jar"},
         artifactExtension = ArtifactExtension.ZIP
+)
+@LambdaUrlConfig(
+        authType = AuthType.NONE,
+        invokeMode = InvokeMode.BUFFERED
 )
 @DependsOn(name = "Weather", resourceType = ResourceType.DYNAMODB_TABLE)
 @EnvironmentVariables(

@@ -12,8 +12,6 @@
             "dynamodb:PutItem",
             "dynamodb:Batch*",
             "dynamodb:DeleteItem",
-            "ssm:PutParameter",
-            "ssm:GetParameter",
             "kms:Decrypt",
             "xray:PutTraceSegments",
             "xray:PutTelemetryRecords",
