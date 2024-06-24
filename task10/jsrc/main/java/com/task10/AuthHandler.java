@@ -13,6 +13,8 @@ import java.util.Map;
 public class AuthHandler extends AbstractRequestHandlers {
     private LambdaLogger logger;
     private String cognitoUserPoolName;
+    private String cognitoUserPoolId;
+    private String cognitoClientId;
 
     private static final String CLIENT_APP = "client-app";
 
@@ -22,6 +24,9 @@ public class AuthHandler extends AbstractRequestHandlers {
     public AuthHandler(Context context) {
         logger = context.getLogger();
         cognitoUserPoolName = System.getenv("cognito_userpool");
+
+        cognitoUserPoolId = getUserPoolId();
+        cognitoClientId = getClientId();
     }
 
     public APIGatewayV2HTTPResponse handleSignin(APIGatewayV2HTTPEvent requestEvent) {
@@ -33,8 +38,8 @@ public class AuthHandler extends AbstractRequestHandlers {
         authParameters.put("PASSWORD", request.password);
 
         InitiateAuthRequest authRequest = InitiateAuthRequest.builder()
-                .authFlow(AuthFlowType.USER_PASSWORD_AUTH)
-                .clientId(CLIENT_APP)
+                .authFlow(AuthFlowType.ADMIN_NO_SRP_AUTH)
+                .clientId(cognitoClientId)
                 .authParameters(authParameters)
                 .build();
 
@@ -56,7 +61,7 @@ public class AuthHandler extends AbstractRequestHandlers {
         }
 
         AdminCreateUserRequest createUserRequest = AdminCreateUserRequest.builder()
-                .userPoolId(cognitoUserPoolName)
+                .userPoolId(cognitoUserPoolId)
                 .username(request.email)
                 .userAttributes(
                         AttributeType.builder()
@@ -64,11 +69,11 @@ public class AuthHandler extends AbstractRequestHandlers {
                                 .value(request.email)
                                 .build(),
                         AttributeType.builder()
-                                .name("given_name")
+                                .name("firstName")
                                 .value(request.firstName)
                                 .build(),
                         AttributeType.builder()
-                                .name("family_name")
+                                .name("lastName")
                                 .value(request.lastName)
                                 .build())
                 .temporaryPassword("TempPassword123!")
@@ -80,7 +85,7 @@ public class AuthHandler extends AbstractRequestHandlers {
 
             // Set user's permanent password
             AdminSetUserPasswordRequest setPasswordRequest = AdminSetUserPasswordRequest.builder()
-                    .userPoolId(cognitoUserPoolName)
+                    .userPoolId(cognitoUserPoolId)
                     .username(request.email)
                     .password(request.password)
                     .permanent(true)
@@ -91,6 +96,25 @@ public class AuthHandler extends AbstractRequestHandlers {
         } catch (Exception e) {
             return buildErrorResponse(e.getMessage());
         }
+    }
+
+    private String getUserPoolId(){
+        return cognitoClient.listUserPools(ListUserPoolsRequest.builder().maxResults(10).build())
+                .userPools().stream()
+                .filter(p -> p.name().contains(cognitoUserPoolName))
+                .findAny()
+                .orElseThrow(() -> new RuntimeException("User pool %s not found".formatted(cognitoUserPoolName)))
+                .id();
+    }
+
+    private String getClientId(){
+        return cognitoClient.listUserPoolClients(
+                ListUserPoolClientsRequest.builder().userPoolId(cognitoUserPoolId).maxResults(1).build())
+                .userPoolClients().stream()
+                .filter(c -> c.clientName().contains(CLIENT_APP))
+                .findAny()
+                .orElseThrow(() -> new RuntimeException("User pool %s not found".formatted(cognitoUserPoolName)))
+                .clientId();
     }
 
     private boolean isValidPassword(String password) {

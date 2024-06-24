@@ -61,26 +61,35 @@ public class ApiHandler extends AbstractRequestHandlers implements RequestHandle
     private AuthHandler authHandler;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-    private final Map<RouteKey, Function<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse>> routeHandlers = Map.of(
-            new RouteKey("POST", "/signup"), authHandler::handleSignup,
-            new RouteKey("POST", "/signin"), authHandler::handleSignin,
-            new RouteKey("POST", "/tables"), dynamoDBHandler::handleTablesPost,
-            new RouteKey("GET", "/tables"), dynamoDBHandler::handleTablesGet,
-            new RouteKey("GET", "/tables_id"), dynamoDBHandler::handleTablesByIdGet,
-            new RouteKey("POST", "/reservations"), dynamoDBHandler::handleReservationsPost,
-            new RouteKey("GET", "/reservations"), dynamoDBHandler::handleReservationsGet
-    );
+    private Map<RouteKey, Function<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse>> routeHandlers;
 
     public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent requestEvent, Context context) {
         logger = context.getLogger();
-        authHandler = new AuthHandler(context);
-        dynamoDBHandler = new DynamoDBHandler(context);
-
         logger.log("RequestEvent: " + requestEvent);
         logger.log("Body: " + requestEvent.getBody());
 
-        RouteKey routeKey = new RouteKey(getMethod(requestEvent), getPath(requestEvent));
-        return routeHandlers.getOrDefault(routeKey, this::badResponse).apply(requestEvent);
+        try {
+            authHandler = new AuthHandler(context);
+            dynamoDBHandler = new DynamoDBHandler(context);
+            initRoutes();
+
+            RouteKey routeKey = new RouteKey(getMethod(requestEvent), getPath(requestEvent));
+            return routeHandlers.getOrDefault(routeKey, this::badResponse).apply(requestEvent);
+        } catch (RuntimeException e){
+            return buildErrorResponse(e.getMessage());
+        }
+    }
+
+    private void initRoutes(){
+        routeHandlers = Map.of(
+                new RouteKey("POST", "/signup"), authHandler::handleSignup,
+                new RouteKey("POST", "/signin"), authHandler::handleSignin,
+                new RouteKey("POST", "/tables"), dynamoDBHandler::handleTablesPost,
+                new RouteKey("GET", "/tables"), dynamoDBHandler::handleTablesGet,
+                new RouteKey("GET", "/tables_id"), dynamoDBHandler::handleTablesByIdGet,
+                new RouteKey("POST", "/reservations"), dynamoDBHandler::handleReservationsPost,
+                new RouteKey("GET", "/reservations"), dynamoDBHandler::handleReservationsGet
+        );
     }
 
 }
