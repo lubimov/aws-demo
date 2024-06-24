@@ -52,7 +52,7 @@ import java.util.function.Function;
         value = {
                 @EnvironmentVariable(key = "tables_table", value = "${target_table}"),
                 @EnvironmentVariable(key = "reservations_table", value = "${reservations_table}"),
-                @EnvironmentVariable(key = "cognito_userpool", value = "${simple-booking-userpool}")
+                @EnvironmentVariable(key = "cognito_userpool", value = "${booking_userpool}")
         }
 )
 public class ApiHandler extends AbstractRequestHandlers implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
