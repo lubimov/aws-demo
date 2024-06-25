@@ -4,6 +4,7 @@ import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
 import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
+import org.apache.commons.lang3.StringUtils;
 import software.amazon.awssdk.services.cognitoidentityprovider.CognitoIdentityProviderClient;
 import software.amazon.awssdk.services.cognitoidentityprovider.model.*;
 
@@ -63,6 +64,10 @@ public class AuthHandler extends AbstractRequestHandlers {
     public APIGatewayProxyResponseEvent handleSignup(APIGatewayProxyRequestEvent requestEvent) {
         logger.log(">> handleSignup");
         final UserRecord request = gson.fromJson(requestEvent.getBody(), UserRecord.class);
+
+        if (!isValidSignupRequest(request)) {
+            return buildErrorResponse("Invalid signup request. All fields must be non-empty.");
+        }
 
         // Validate the password
         if (!isValidPassword(request.password)) {
@@ -165,8 +170,14 @@ public class AuthHandler extends AbstractRequestHandlers {
     }
 
     private boolean isValidPassword(String password) {
-        String pattern = "^(?=.*[0-9])(?=.*[A-Za-z])(?=.*[$%^*])(?=\\S+$).{12,}$";
+        String pattern = "^(?=.*[0-9])(?=.*[A-Za-z])(?=.*[$%^*_@])(?=\\S+$).{12,}$";
         return password.matches(pattern);
+    }
+
+    private boolean isValidSignupRequest(UserRecord request) {
+        return StringUtils.isNoneBlank(request.email) &&
+                StringUtils.isNoneBlank(request.password) &&
+                StringUtils.isNoneBlank(request.lastName);
     }
 
     /**
