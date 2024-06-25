@@ -12,6 +12,7 @@
             "dynamodb:PutItem",
             "dynamodb:Batch*",
             "dynamodb:DeleteItem",
+            "dynamodb:Scan",
             "cognito-idp:DescribeUserPool",
             "cognito-idp:GetUser",
             "cognito-idp:ListUsers",
@@ -34,7 +35,7 @@
   "Tables": {
     "resource_type": "dynamodb_table",
     "hash_key_name": "id",
-    "hash_key_type": "N",
+    "hash_key_type": "S",
     "read_capacity": 1,
     "write_capacity": 1,
     "global_indexes": [],
@@ -42,7 +43,7 @@
   },
   "Reservations": {
     "resource_type": "dynamodb_table",
-    "hash_key_name": "reservationId",
+    "hash_key_name": "id",
     "hash_key_type": "S",
     "read_capacity": 1,
     "write_capacity": 1,
@@ -60,9 +61,9 @@
           "authorization_type": "NONE",
           "integration_type": "lambda",
           "lambda_name": "api_handler",
+          "integration_request_body_template": {},
           "api_key_required": false,
           "method_request_parameters": {},
-          "integration_request_body_template": {},
           "responses": [],
           "integration_responses": [],
           "default_error_pattern": true,
@@ -170,9 +171,9 @@
     "resource_type": "cognito_idp",
     "password_policy": {
       "minimum_length": 12,
-      "require_uppercase": true,
+      "require_uppercase": false,
       "require_symbols": true,
-      "require_lowercase": true,
+      "require_lowercase": false,
       "require_numbers": true
     },
     "auto_verified_attributes": [],

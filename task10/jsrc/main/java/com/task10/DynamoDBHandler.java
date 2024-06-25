@@ -11,13 +11,13 @@ import com.amazonaws.services.dynamodbv2.model.ScanRequest;
 import com.amazonaws.services.dynamodbv2.model.ScanResult;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyRequestEvent;
+import com.amazonaws.services.lambda.runtime.events.APIGatewayProxyResponseEvent;
 import com.amazonaws.services.lambda.runtime.logging.LogLevel;
+import com.amazonaws.util.StringUtils;
 
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class DynamoDBHandler extends AbstractRequestHandlers {
 
@@ -33,23 +33,22 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
         reservationsDBTableName = System.getenv("reservations_table");
     }
 
-    public APIGatewayV2HTTPResponse handleReservationsGet(APIGatewayV2HTTPEvent requestEvent) {
+    public APIGatewayProxyResponseEvent handleReservationsGet(APIGatewayProxyRequestEvent requestEvent) {
         logger.log(">> handleReservationsGet");
 
-        Table table = dynamoDB.getTable(tablesDBTableName);
         try {
-            ScanRequest scanRequest = new ScanRequest().withTableName(reservationsDBTableName);
-            ScanResult result = client.scan(scanRequest);
+            final List<ReservationRecord> reservationsList = getReservations();
+            logger.log("reservations: " + reservationsList);
 
             ArrayList<Map<String, Object>> reservations = new ArrayList<>();
-            for (Map<String, AttributeValue> item : result.getItems()) {
+            for (ReservationRecord item : reservationsList) {
                 Map<String, Object> itemValues = Map.of(
-                        "tableNumber", item.get("tableNumber").getN(),
-                        "clientName", item.get("clientName").getS(),
-                        "phoneNumber", item.get("phoneNumber").getS(),
-                        "date", item.get("date").getS(),
-                        "slotTimeStart", item.get("slotTimeStart").getS(),
-                        "slotTimeEnd", item.get("slotTimeEnd").getS()
+                        "tableNumber", item.tableNumber,
+                        "clientName", item.clientName,
+                        "phoneNumber", item.phoneNumber,
+                        "date", item.date,
+                        "slotTimeStart", item.slotTimeStart,
+                        "slotTimeEnd", item.slotTimeEnd
                 );
                 reservations.add(itemValues);
             }
@@ -60,22 +59,33 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
 
             return buildResponse(SC_OK, gson.toJson(response));
         } catch (Exception e) {
-            logger.log("Get items failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
+            logger.log("ERROR: %s".formatted(Arrays.asList(e.getStackTrace())));
+            logger.log("ERROR: Get items failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
             return buildErrorResponse(e.getMessage());
         }
     }
 
-    public APIGatewayV2HTTPResponse handleReservationsPost(APIGatewayV2HTTPEvent requestEvent) {
+    public APIGatewayProxyResponseEvent handleReservationsPost(APIGatewayProxyRequestEvent requestEvent) {
         logger.log(">> handleReservationsPost");
 
         final ReservationRecord reservationRecord = gson.fromJson(requestEvent.getBody(), ReservationRecord.class);
 
         Table table = dynamoDB.getTable(reservationsDBTableName);
         try {
+            final List<Integer> tableNumbers = getTableNumbers();
+            logger.log("tableIds: " + tableNumbers);
+            final List<ReservationRecord> reservations = getReservations();
+            logger.log("reservations: " + reservations);
+
+            if (!validatePostReservationsRequest(reservationRecord, tableNumbers, reservations)) {
+                logger.log("ERROR: invalid reservation");
+                return buildErrorResponse("Invalid reservation");
+            }
+
             final String reservationId = UUID.randomUUID().toString();
 
             Item item = new Item()
-                    .withPrimaryKey("reservationId", reservationId)
+                    .withPrimaryKey("id", reservationId)
                     .withNumber("tableNumber", reservationRecord.tableNumber)
                     .withString("clientName", reservationRecord.clientName)
                     .withString("phoneNumber", reservationRecord.phoneNumber)
@@ -89,13 +99,39 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
             Map<String, String> response = Map.of("reservationId", reservationId);
             return buildResponse(SC_OK, gson.toJson(response));
         } catch (Exception e) {
-            logger.log("Create items failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
+            logger.log("ERROR: %s".formatted(Arrays.asList(e.getStackTrace())));
+            logger.log("ERROR: Create items failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
             return buildErrorResponse(e.getMessage());
 
         }
     }
 
-    public APIGatewayV2HTTPResponse handleTablesGet(APIGatewayV2HTTPEvent requestEvent) {
+    private List<ReservationRecord> getReservations() {
+        ScanRequest scanRequest = new ScanRequest().withTableName(reservationsDBTableName);
+        ScanResult result = client.scan(scanRequest);
+
+        return result.getItems().stream()
+                .map(item ->
+                        new ReservationRecord(
+                                Integer.valueOf(item.get("tableNumber").getN()),
+                                item.get("clientName").getS(),
+                                item.get("phoneNumber").getS(),
+                                item.get("date").getS(),
+                                item.get("slotTimeStart").getS(),
+                                item.get("slotTimeEnd").getS()))
+                .collect(Collectors.toList());
+    }
+
+    private List<Integer> getTableNumbers() {
+        ScanRequest scanRequest = new ScanRequest().withTableName(tablesDBTableName);
+        ScanResult result = client.scan(scanRequest);
+
+        return result.getItems().stream()
+                .map(item -> Integer.valueOf(item.get("number").getN()))
+                .collect(Collectors.toList());
+    }
+
+    public APIGatewayProxyResponseEvent handleTablesGet(APIGatewayProxyRequestEvent requestEvent) {
         logger.log(">> handleTablesGet");
 
         try {
@@ -104,11 +140,12 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
 
             ArrayList<Map<String, Object>> tables = new ArrayList<>();
             for (Map<String, AttributeValue> item : result.getItems()) {
+                logger.log("Table item: %s".formatted(item));
                 Map<String, Object> itemValues = Map.of(
-                        "id", item.get("id").getN(),
-                        "number", item.get("number").getN(),
-                        "places", item.get("places").getN(),
-                        "isVip", item.get("isVip").getB()
+                        "id", Integer.valueOf(item.get("id").getS()),
+                        "number", Integer.valueOf(item.get("number").getN()),
+                        "places", Integer.valueOf(item.get("places").getN()),
+                        "isVip", item.get("isVip").getBOOL()
                 );
                 if (item.get("minOrder") != null) {
                     itemValues.put("minOrder", item.get("minOrder").getN());
@@ -123,12 +160,13 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
 
             return buildResponse(SC_OK, gson.toJson(response));
         } catch (Exception e) {
-            logger.log("Get item failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
+            logger.log("ERROR: %s".formatted(Arrays.asList(e.getStackTrace())));
+            logger.log("ERROR: Get item failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
             return buildErrorResponse(e.getMessage());
         }
     }
 
-    public APIGatewayV2HTTPResponse handleTablesByIdGet(APIGatewayV2HTTPEvent requestEvent) {
+    public APIGatewayProxyResponseEvent handleTablesByIdGet(APIGatewayProxyRequestEvent requestEvent) {
         logger.log(">> handleTablesByIdGet");
 
         final String tableId = requestEvent.getPathParameters().get("tableId");
@@ -137,7 +175,7 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
             Item item = table.getItem(new PrimaryKey("id", tableId));
 
             Map<String, Object> response = Map.of(
-                    "id", item.getInt("id"),
+                    "id", Integer.valueOf(item.getString("id")),
                     "number", item.getInt("number"),
                     "places", item.getInt("places"),
                     "isVip", item.getBoolean("isVip")
@@ -148,21 +186,29 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
 
             return buildResponse(SC_OK, gson.toJson(response));
         } catch (Exception e) {
-            logger.log("Get item failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
+            logger.log("ERROR: %s".formatted(Arrays.asList(e.getStackTrace())));
+            logger.log("ERROR: Get item failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
             return buildErrorResponse(e.getMessage());
         }
     }
 
-    public APIGatewayV2HTTPResponse handleTablesPost(APIGatewayV2HTTPEvent requestEvent) {
+    public APIGatewayProxyResponseEvent handleTablesPost(APIGatewayProxyRequestEvent requestEvent) {
         logger.log(">> handleTablesPost");
         final TableRecord tableRecord = gson.fromJson(requestEvent.getBody(), TableRecord.class);
 
         Table table = dynamoDB.getTable(tablesDBTableName);
         try {
-            final Integer id = tableRecord.id; //UUID.randomUUID().toString();
+            final List<Integer> tableNumbers = getTableNumbers();
+            logger.log("tableIds: " + tableNumbers);
+            if (!validatePostTablesRequest(tableRecord)) {
+                logger.log("ERROR: invalid table info");
+                return buildErrorResponse("Invalid table info");
+            }
+
+            final String tableId = String.valueOf(tableRecord.id); //UUID.randomUUID().toString();
 
             Item item = new Item()
-                    .withPrimaryKey("id", tableRecord.id)
+                    .withPrimaryKey("id", tableId)
                     .withNumber("number", tableRecord.number)
                     .withNumber("places", tableRecord.places)
                     .withBoolean("isVip", tableRecord.isVip);
@@ -173,13 +219,61 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
             logger.log("Item: " + item);
             table.putItem(item);
 
-            Map<String, Integer> response = Map.of("id", id);
+            Map<String, Integer> response = Map.of("id", Integer.valueOf(tableId));
             return buildResponse(SC_OK, gson.toJson(response));
         } catch (Exception e) {
-            logger.log("Create items failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
+            logger.log("ERROR: %s".formatted(Arrays.asList(e.getStackTrace())));
+            logger.log("ERROR: Create items failed. %s".formatted(e.getMessage()), LogLevel.ERROR);
             return buildErrorResponse(e.getMessage());
 
         }
+    }
+
+    private boolean validatePostTablesRequest(TableRecord request) {
+        if (request.id != null
+                && request.number != null
+                && request.places != null
+                && request.isVip != null
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean validatePostReservationsRequest(ReservationRecord request, List<Integer> tableIds, List<ReservationRecord> reservations) {
+        if (request.tableNumber != null
+                && request.clientName != null
+                && request.phoneNumber != null
+                && request.date != null
+                && request.slotTimeStart != null
+                && request.slotTimeEnd != null
+                && tableIds.contains(request.tableNumber)
+                && noOverlap(request, reservations)
+        ) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private boolean noOverlap(ReservationRecord reservation, List<ReservationRecord> reservations) {
+        Integer tableNumber = reservation.tableNumber;
+        String date = reservation.date;
+        String startTime = reservation.slotTimeStart;
+        String endTime = reservation.slotTimeEnd;
+
+        for (ReservationRecord r : reservations) {
+            if (Objects.equals(r.tableNumber, tableNumber) && Objects.equals(r.date, date)) {
+                if (!(StringUtils.compare(r.slotTimeStart, endTime) >= 0
+                        || StringUtils.compare(r.slotTimeEnd, startTime) <= 0)) {
+                    return false;
+                }
+            }
+        }
+
+
+        return true;
     }
 
     /**
@@ -191,7 +285,7 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
      * "minOrder": // optional. int, table deposit required to book it
      * }
      */
-    private record TableRecord(Integer id, Integer number, Integer places, boolean isVip, Integer minOrder) {
+    private record TableRecord(Integer id, Integer number, Integer places, Boolean isVip, Integer minOrder) {
     }
 
     /**

@@ -3,9 +3,7 @@ package com.task10;
 import com.amazonaws.services.lambda.runtime.Context;
 import com.amazonaws.services.lambda.runtime.LambdaLogger;
 import com.amazonaws.services.lambda.runtime.RequestHandler;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPEvent;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2HTTPResponse;
-import com.amazonaws.services.lambda.runtime.events.APIGatewayV2ProxyRequestEvent;
+import com.amazonaws.services.lambda.runtime.events.*;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.syndicate.deployment.annotations.environment.EnvironmentVariable;
@@ -55,15 +53,15 @@ import java.util.function.Function;
                 @EnvironmentVariable(key = "cognito_userpool", value = "${booking_userpool}")
         }
 )
-public class ApiHandler extends AbstractRequestHandlers implements RequestHandler<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse> {
+public class ApiHandler extends AbstractRequestHandlers implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
     private LambdaLogger logger;
     private DynamoDBHandler dynamoDBHandler;
     private AuthHandler authHandler;
     private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
 
-    private Map<RouteKey, Function<APIGatewayV2HTTPEvent, APIGatewayV2HTTPResponse>> routeHandlers;
+    private Map<RouteKey, Function<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent>> routeHandlers;
 
-    public APIGatewayV2HTTPResponse handleRequest(APIGatewayV2HTTPEvent requestEvent, Context context) {
+    public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent requestEvent, Context context) {
         logger = context.getLogger();
         logger.log("RequestEvent: " + requestEvent);
         logger.log("Body: " + requestEvent.getBody());
@@ -74,6 +72,7 @@ public class ApiHandler extends AbstractRequestHandlers implements RequestHandle
             initRoutes();
 
             RouteKey routeKey = new RouteKey(getMethod(requestEvent), getPath(requestEvent));
+            logger.log("RouteKey: " + routeKey);
             return routeHandlers.getOrDefault(routeKey, this::badResponse).apply(requestEvent);
         } catch (RuntimeException e){
             return buildErrorResponse(e.getMessage());
