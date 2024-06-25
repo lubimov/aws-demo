@@ -48,7 +48,7 @@ import java.util.function.Function;
 )
 @EnvironmentVariables(
         value = {
-                @EnvironmentVariable(key = "tables_table", value = "${target_table}"),
+                @EnvironmentVariable(key = "tables_table", value = "${tables_table}"),
                 @EnvironmentVariable(key = "reservations_table", value = "${reservations_table}"),
                 @EnvironmentVariable(key = "cognito_userpool", value = "${booking_userpool}")
         }
