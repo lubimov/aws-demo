@@ -149,7 +149,7 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
                 itemValues.put("isVip", item.get("isVip").getBOOL());
 
                 if (item.get("minOrder") != null) {
-                    itemValues.put("minOrder", item.get("minOrder").getN());
+                    itemValues.put("minOrder", Integer.valueOf(item.get("minOrder").getN()));
                 }
 
                 tables.add(itemValues);
