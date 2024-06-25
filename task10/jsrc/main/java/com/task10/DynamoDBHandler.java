@@ -141,12 +141,13 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
             ArrayList<Map<String, Object>> tables = new ArrayList<>();
             for (Map<String, AttributeValue> item : result.getItems()) {
                 logger.log("Table item: %s".formatted(item));
-                Map<String, Object> itemValues = Map.of(
-                        "id", Integer.valueOf(item.get("id").getS()),
-                        "number", Integer.valueOf(item.get("number").getN()),
-                        "places", Integer.valueOf(item.get("places").getN()),
-                        "isVip", item.get("isVip").getBOOL()
-                );
+
+                Map<String, Object> itemValues = new HashMap<>();
+                itemValues.put("id", Integer.valueOf(item.get("id").getS()));
+                itemValues.put("number", Integer.valueOf(item.get("number").getN()));
+                itemValues.put("places", Integer.valueOf(item.get("places").getN()));
+                itemValues.put("isVip", item.get("isVip").getBOOL());
+
                 if (item.get("minOrder") != null) {
                     itemValues.put("minOrder", item.get("minOrder").getN());
                 }
@@ -174,12 +175,11 @@ public class DynamoDBHandler extends AbstractRequestHandlers {
         try {
             Item item = table.getItem(new PrimaryKey("id", tableId));
 
-            Map<String, Object> response = Map.of(
-                    "id", Integer.valueOf(item.getString("id")),
-                    "number", item.getInt("number"),
-                    "places", item.getInt("places"),
-                    "isVip", item.getBoolean("isVip")
-            );
+            Map<String, Object> response = new HashMap<>();
+            response.put("id", Integer.valueOf(item.getString("id")));
+            response.put("number", item.getInt("number"));
+            response.put("places", item.getInt("places"));
+            response.put("isVip", item.getBoolean("isVip"));
             if (item.get("minOrder") != null) {
                 response.put("minOrder", item.getInt("minOrder"));
             }
