@@ -18,6 +18,7 @@
     "/reservations": {
       "get": {
         "summary" : "Get reservations",
+        "description": "Get reservations",
         "responses": {
           "200": {
             "description": "200 response",
@@ -76,6 +77,7 @@
       },
       "post": {
         "summary" : "Create a reservation",
+        "description": "Create a reservation",
         "requestBody" : {
           "required" : true,
           "content": {
@@ -194,6 +196,7 @@
     "/tables": {
       "get": {
         "summary" : "Get tables",
+        "description": "Get tables",
         "responses": {
           "200": {
             "description": "200 response",
@@ -252,6 +255,7 @@
       },
       "post": {
         "summary" : "Create a table",
+        "description": "Create a table",
         "requestBody" : {
           "required" : true,
           "content": {
@@ -370,6 +374,7 @@
     "/signin": {
       "post": {
         "summary" : "Sing in user to the App",
+        "description": "Sing in user to the App",
         "requestBody" : {
           "required" : true,
           "content": {
@@ -483,6 +488,7 @@
     "/tables/{tableId}": {
       "get": {
         "summary" : "Get a Table by ID",
+        "description": "Get a Table by ID",
         "parameters": [
           {
             "name": "tableId",
@@ -611,6 +617,7 @@
     "/signup": {
       "post": {
         "summary" : "Sing up to the App",
+        "description": "Sing up to the App",
         "requestBody" : {
           "required" : true,
           "content": {
